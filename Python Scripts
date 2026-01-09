@@ -1,0 +1,164 @@
+# Import essential libraries for data analysis and visualization
+
+import numpy as np              
+import pandas as pd            
+import matplotlib.pyplot as plt
+import seaborn as sns    
+
+# Load the Google Play Store dataset from an online GitHub repository
+
+df = pd.read_csv(
+    'https://raw.githubusercontent.com/krishnaik06/playstore-Dataset/main/googleplaystore.csv'
+
+df.info()
+df.describe()
+
+# Handle inconsistent values in the 'Size' column and separate size units (MB and KB)
+
+# Replace non-numeric size information with NaN for proper data cleaning
+df['Size'] = df['Size'].replace('Varies with device', np.nan)
+
+# Extract app sizes that are measured in Megabytes (M)
+df['Size_M'] = df['Size'].where(df['Size'].str.contains('M', na=False))
+
+# Extract app sizes that are measured in Kilobytes (k)
+df['Size_K'] = df['Size'].where(df['Size'].str.contains('k', na=False))
+
+# Display last 5 rows to verify the transformation
+df.tail()
+
+# This helps detect duplicate records for the same application
+df.value_counts('App')
+
+# This ensures one unique record per application
+df = df.drop_duplicates(subset="App")
+
+
+# Clean and convert the 'Installs' column into a numeric format for analysis
+
+# Remove the '+' symbol from install counts (e.g., '1,000+' → '1,000')
+df['Installs_clean'] = df['Installs'].str.replace('+', '', regex=False)
+
+# Remove commas from install counts (e.g., '1,000' → '1000')
+df['Installs_clean'] = df['Installs_clean'].str.replace(',', '', regex=False)
+
+# Remove invalid entries where installs are incorrectly labeled as 'Free'
+df = df[df['Installs_clean'] != 'Free']
+
+# Convert cleaned install values to numeric (float) for calculations
+df['Installs_clean'] = df['Installs_clean'].astype(float)
+
+# Identify the top 10 most installed apps based on cleaned install counts
+
+# Sort the dataset by install count in descending order
+# and select the top 10 records
+top10 = df.sort_values(by='Installs_clean', ascending=False).head(10)
+
+# Display the top 10 most installed apps
+top10
+
+
+# Define a helper function to format large install numbers into human-readable form
+
+def format_installs(x):
+    """
+    Converts numeric install counts into readable strings:
+    Billions (B), Millions (M), or Thousands (K)
+    """
+    if x >= 1e9:
+        return f'{x / 1e9:.1f}B'
+    elif x >= 1e6:
+        return f'{x / 1e6:.1f}M'
+    elif x >= 1e3:
+        return f'{x / 1e3:.1f}K'
+    else:
+        return str(x)
+
+# Apply the formatting function to create a new readable installs column
+df['install_format'] = df['Installs_clean'].apply(format_installs)
+
+
+
+# Create a summarized dataset for top app categories by total installs
+
+data = {
+    "Category": [
+        "GAME", "COMMUNICATION", "PRODUCTIVITY", "SOCIAL", "TOOLS",
+        "FAMILY", "PHOTOGRAPHY", "NEWS_AND_MAGAZINES",
+        "TRAVEL_AND_LOCAL", "VIDEO_PLAYERS"
+    ],
+    "Installs_clean": [
+        "35.1B", "32.6B", "14.2B", "14.1B", "11.5B",
+        "10.3B", "10.1B", "7.5B", "6.9B", "6.2B"
+    ]
+}
+
+# Convert dictionary into a DataFrame
+df = pd.DataFrame(data)
+
+
+# Define a function to convert formatted install values into numeric form
+def convert_installs(value):
+    """
+    Converts install values from billions (e.g., '35.1B')
+    into numeric format for plotting and calculations
+    """
+    return float(value.replace("B", "")) * 1_000_000_000
+
+
+# Apply conversion to create a numeric installs column
+df["Installs_numeric"] = df["Installs_clean"].apply(convert_installs)
+
+
+# Visualization: Bar chart of total installs by app category
+plt.figure(figsize=(12, 8))
+plt.bar(df['Category'], df['Installs_numeric'], color='purple')
+
+# Improve readability of x-axis labels
+plt.xticks(rotation=50, ha='right')
+
+# Add chart labels and title
+plt.title('Top App Categories by Total Installs', color='red')
+plt.xlabel('Category', color='red')
+plt.ylabel('Number of Installs', color='red')
+
+# Display the plot
+plt.show()
+
+# Reload the original Google Play Store dataset into a new DataFrame
+
+df2 = pd.read_csv(
+    'https://raw.githubusercontent.com/krishnaik06/playstore-Dataset/main/googleplaystore.csv'
+)
+
+# Fill missing values in the 'Rating' column with the average rating
+# Case: Handling missing ratings to maintain dataset consistency for analysis
+
+# Identify categories with the highest number of 5-star rated apps
+
+# Filter apps that have a perfect 5.0 rating,
+# then group them by category and count the number of apps in each category
+five_star_apps_category = (
+    df2[df2['Rating'] == 5]
+    .groupby('Category')['App']
+    .count()
+    .sort_values(ascending=False)
+)
+
+# Display category-wise count of 5-star rated apps
+five_star_apps_category
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12,6))
+sns.barplot(
+    data=five_star_apps_category,
+    x='Category',
+    y='Five_Star_Count'
+)
+
+plt.xticks(rotation=90)
+plt.title("Number of 5★ Rated Apps by Category")
+plt.show()      
+
